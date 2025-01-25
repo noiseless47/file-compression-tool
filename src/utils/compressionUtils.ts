@@ -1,5 +1,4 @@
 import pako from 'pako';
-import { Buffer } from 'buffer';
 
 export interface CompressionResult {
   file: File;
@@ -79,48 +78,37 @@ export async function compressFile(file: File): Promise<CompressionResult> {
 
 // Advanced text compression with preprocessing
 async function advancedTextCompression(data: Uint8Array): Promise<Uint8Array> {
-  // Convert to text for preprocessing
   const text = new TextDecoder().decode(data);
   
-  // Preprocessing steps for better compression
   const preprocessed = text
-    // Remove unnecessary whitespace
     .replace(/\s+/g, ' ')
-    // Remove comments in code files
     .replace(/\/\*[\s\S]*?\*\/|\/\/.*/g, '')
-    // Basic minification
     .trim();
 
-  // Convert back to Uint8Array
   const preprocessedData = new TextEncoder().encode(preprocessed);
 
-  // Use DEFLATE with maximum compression
   return pako.deflate(preprocessedData, {
     level: 9,
     windowBits: 15,
-    memLevel: 9,
-    strategy: pako.Z_DEFAULT_STRATEGY
+    memLevel: 9
   });
 }
 
 // Optimized binary compression
 async function optimizedBinaryCompression(data: Uint8Array): Promise<Uint8Array> {
-  // Use chunked compression for large files
-  const CHUNK_SIZE = 1024 * 1024; // 1MB chunks
+  const CHUNK_SIZE = 1024 * 1024;
   if (data.length > CHUNK_SIZE) {
     const chunks: Uint8Array[] = [];
     for (let i = 0; i < data.length; i += CHUNK_SIZE) {
       const chunk = data.slice(i, i + CHUNK_SIZE);
       const compressedChunk = pako.deflate(chunk, {
-        level: 7, // Slightly lower level for better speed
+        level: 7,
         windowBits: 15,
-        memLevel: 8,
-        strategy: pako.Z_RLE // Run-length encoding for binary data
+        memLevel: 8
       });
       chunks.push(compressedChunk);
     }
     
-    // Combine chunks
     const totalLength = chunks.reduce((sum, chunk) => sum + chunk.length, 0);
     const result = new Uint8Array(totalLength);
     let offset = 0;
@@ -131,12 +119,10 @@ async function optimizedBinaryCompression(data: Uint8Array): Promise<Uint8Array>
     return result;
   }
 
-  // For smaller files, use single-pass compression
   return pako.deflate(data, {
     level: 8,
     windowBits: 15,
-    memLevel: 8,
-    strategy: pako.Z_DEFAULT_STRATEGY
+    memLevel: 8
   });
 }
 
@@ -172,7 +158,7 @@ export async function decompressFile(file: File): Promise<DecompressionResult> {
       compressedSize: actualCompressedData.length,
       decompressedSize: decompressedData.length
     };
-  } catch (error) {
+  } catch {
     // Fallback for files compressed with the old method
     const decompressedData = pako.inflate(compressedData);
     const decompressedFile = new File(
